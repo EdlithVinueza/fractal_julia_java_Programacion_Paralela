@@ -22,6 +22,8 @@ dependencies {
     implementation ("org.lwjgl", "lwjgl", classifier = lwjglNatives)
     implementation ("org.lwjgl", "lwjgl-glfw", classifier = lwjglNatives)
     implementation ("org.lwjgl", "lwjgl-opengl", classifier = lwjglNatives)
+
+    implementation("com.github.jnr:jnr-ffi:2.2.18")
 }
 
 tasks.test {

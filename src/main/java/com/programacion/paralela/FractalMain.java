@@ -1,15 +1,15 @@
 package com.programacion.paralela;
+import com.programacion.paralela.dll.FractalDll;
+import com.programacion.paralela.dll.FractalSimd;
 import org.lwjgl.*;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.*;
-import org.lwjgl.system.*;
 
 import java.nio.*;
 
 import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.system.MemoryStack.*;
 import static org.lwjgl.system.MemoryUtil.*;
 //FractalMain
 
@@ -22,13 +22,19 @@ public class FractalMain {
 
     private IntBuffer intBuffer; //es similar
 
-    private FractalCpu cpu;
+    private FractalCpu fractalSerial;
 
+    private FractalSimd fractalSimd;
 
+    private FPSCounter fpsCounter = new FPSCounter();
+
+    int modo=1;
 
     FractalMain() {
+
+        fractalSerial = new FractalCpu();
+        fractalSimd = new FractalSimd();
         intBuffer = BufferUtils.createIntBuffer(1600*900);  //inicializamos
-        cpu = new FractalCpu();
     }
 
 
@@ -78,7 +84,20 @@ public class FractalMain {
                     FractalParam.max_iterations = 10;
                 }
             }
-            cpu.julia_serial_2();
+            if(key==GLFW_KEY_1 && action==GLFW_RELEASE){
+                System.out.println("Modo Java");
+                modo=1;
+
+
+            }
+            else if (key==GLFW_KEY_2 && action==GLFW_RELEASE) {
+                System.out.println("Modo SIMD - c/c++");
+                modo=2;
+                fractalSimd = new FractalSimd();
+            }
+
+
+
         });
         //esto es para centar la ventana
         GLFWVidMode vidMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
@@ -151,8 +170,21 @@ public class FractalMain {
 
     void paint() {
 
+        fpsCounter.update();
+
         intBuffer.clear();                    // posición a 0, limit = capacity
-        intBuffer.put(cpu.pixel_buffer);      // volcar arreglo int[] (ARBG/ARGB según tu formato)
+
+        if(modo==1) {
+            fractalSerial.julia_serial_2();
+            intBuffer.put(fractalSerial.pixel_buffer);
+
+        }
+        else if (modo==2){
+            fractalSimd.juliaSimd();
+            intBuffer.put(fractalSimd.pixelBuffer.asIntBuffer());
+
+        }
+
         intBuffer.rewind();                   // poner posición a 0 para lectura por GL
 
         //dibujar la textura
@@ -161,7 +193,8 @@ public class FractalMain {
         glTexImage2D(
                 GL_TEXTURE_2D, 0, GL_RGBA8,
                 1600,900,0,
-                GL_RGBA,GL_UNSIGNED_BYTE,
+                GL_RGBA,
+                GL_UNSIGNED_BYTE,
                 intBuffer
                 );
 
@@ -185,7 +218,17 @@ public class FractalMain {
     }
 
     public static void main(String[] args) {
-        new FractalMain().run();
+        try {
+            System.setProperty("java.library.path", "c:\\tools\\libreria;c:\\tools\\mingw64\\bin");
+
+            //PATH=c:/tools/libreria\;c:/tools/mingw64/bin
+            new FractalMain().run();
+        } catch (Throwable t) {
+            System.err.println("Excepción no capturada al ejecutar FractalMain:");
+            t.printStackTrace();
+            // salir con código 1 para que Gradle/IDE lo marque, pero con stacktrace visible
+            System.exit(1);
+        }
     }
 
 }
